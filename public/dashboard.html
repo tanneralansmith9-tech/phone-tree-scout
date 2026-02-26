@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phone Tree Scout — Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3248;
+      --accent: #4f8ef7;
+      --green: #3ecf8e;
+      --yellow: #f7c94f;
+      --red: #f75050;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --highlight-bg: #2a2050;
+      --highlight-color: #b89aff;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 0.02em;
+      color: var(--accent);
+    }
+
+    .company-badge {
+      font-size: 0.85rem;
+      color: var(--muted);
+      flex: 1;
+    }
+
+    /* ── Status pill ── */
+    #status-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    #status-pill.initiated  { border-color: var(--yellow); color: var(--yellow); }
+    #status-pill.ringing    { border-color: var(--yellow); color: var(--yellow); }
+    #status-pill.in-progress { border-color: var(--green); color: var(--green); }
+    #status-pill.answered   { border-color: var(--green); color: var(--green); }
+    #status-pill.completed  { border-color: var(--muted); color: var(--muted); }
+    #status-pill.failed     { border-color: var(--red); color: var(--red); }
+    #status-pill.busy       { border-color: var(--red); color: var(--red); }
+    #status-pill.no-answer  { border-color: var(--red); color: var(--red); }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .dot.pulse {
+      animation: pulse 1.4s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* ── Hang up button ── */
+    #hangup-btn {
+      padding: 0.4rem 1rem;
+      background: var(--red);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    #hangup-btn:hover { opacity: 0.85; }
+    #hangup-btn:disabled { opacity: 0.35; cursor: default; }
+
+    /* ── Main layout ── */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 260px;
+      gap: 0;
+      overflow: hidden;
+    }
+
+    /* ── Transcript panel ── */
+    #transcript-panel {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+    }
+
+    .panel-title {
+      padding: 0.75rem 1.25rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    #transcript-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 1.25rem;
+      scroll-behavior: smooth;
+    }
+
+    .transcript-line {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 0.6rem;
+      align-items: flex-start;
+      animation: fadeIn 0.25s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .ts-time {
+      font-size: 0.7rem;
+      color: var(--muted);
+      white-space: nowrap;
+      padding-top: 2px;
+      min-width: 52px;
+    }
+
+    .ts-text {
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    .ts-text.highlighted {
+      background: var(--highlight-bg);
+      color: var(--highlight-color);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-weight: 600;
+    }
+
+    .keyword-match {
+      background: #3a2b00;
+      color: #f7c94f;
+      border-radius: 3px;
+      padding: 0 3px;
+      font-weight: 700;
+    }
+
+    .empty-state {
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: center;
+      margin-top: 3rem;
+    }
+
+    /* ── Sidebar ── */
+    aside {
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+    }
+
+    .keyword-list {
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .keyword-tag {
+      padding: 0.35rem 0.65rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .keyword-count {
+      background: var(--highlight-bg);
+      color: var(--highlight-color);
+      border-radius: 999px;
+      padding: 1px 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      min-width: 22px;
+      text-align: center;
+    }
+
+    .sidebar-section {
+      border-top: 1px solid var(--border);
+      padding: 1rem;
+    }
+
+    .sidebar-section h4 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+
+    .meta-row {
+      font-size: 0.8rem;
+      color: var(--text);
+      margin-bottom: 0.35rem;
+    }
+
+    .meta-label {
+      color: var(--muted);
+      display: inline-block;
+      min-width: 70px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 0.5rem 1.25rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #ws-status { color: var(--muted); }
+    #ws-status.connected { color: var(--green); }
+
+    #note-status { color: var(--muted); }
+    #note-status.done { color: var(--green); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📞 Phone Tree Scout</div>
+  <div class="company-badge" id="company-badge">Connecting…</div>
+  <div id="status-pill" class="initiated">
+    <div class="dot pulse"></div>
+    <span id="status-text">Initiating</span>
+  </div>
+  <button id="hangup-btn" onclick="hangUp()">⏹ Hang Up</button>
+</header>
+
+<main>
+  <!-- Transcript panel -->
+  <section id="transcript-panel">
+    <div class="panel-title">Live Transcript</div>
+    <div id="transcript-scroll">
+      <div class="empty-state" id="empty-state">Waiting for call audio…</div>
+    </div>
+  </section>
+
+  <!-- Sidebar -->
+  <aside>
+    <div class="panel-title">Keywords Detected</div>
+    <div class="keyword-list" id="keyword-list">
+      <!-- Populated by JS -->
+    </div>
+
+    <div class="sidebar-section">
+      <h4>Call Info</h4>
+      <div class="meta-row"><span class="meta-label">Call SID:</span> <span id="meta-sid">—</span></div>
+      <div class="meta-row"><span class="meta-label">Company:</span> <span id="meta-company">—</span></div>
+      <div class="meta-row"><span class="meta-label">Duration:</span> <span id="meta-duration">0s</span></div>
+    </div>
+  </aside>
+</main>
+
+<footer>
+  <span>WebSocket: <span id="ws-status">Disconnected</span></span>
+  <span id="note-status">Note will be logged on call end</span>
+</footer>
+
+<script>
+  // ── Config ────────────────────────────────────────────────────────────────
+  const KEYWORDS = ['operator', 'clerk', 'representative', 'press 0', 'press zero', 'directory', 'extension'];
+  const keywordCounts = {};
+  KEYWORDS.forEach(k => keywordCounts[k] = 0);
+
+  const params = new URLSearchParams(window.location.search);
+  const callSid = params.get('callSid');
+  const companyId = params.get('companyId');
+
+  let callActive = true;
+  let durationInterval = null;
+  let startTime = Date.now();
+
+  // ── DOM refs ──────────────────────────────────────────────────────────────
+  const transcriptScroll = document.getElementById('transcript-scroll');
+  const emptyState = document.getElementById('empty-state');
+  const statusPill = document.getElementById('status-pill');
+  const statusText = document.getElementById('status-text');
+  const hangupBtn = document.getElementById('hangup-btn');
+  const wsStatusEl = document.getElementById('ws-status');
+  const noteStatusEl = document.getElementById('note-status');
+  const companyBadge = document.getElementById('company-badge');
+
+  // ── Populate meta ─────────────────────────────────────────────────────────
+  document.getElementById('meta-sid').textContent = callSid || '—';
+  document.getElementById('meta-company').textContent = params.get('companyName') || companyId || '—';
+  companyBadge.textContent = params.get('companyName') || `Company ${companyId}` || 'Unknown Company';
+
+  // ── Duration timer ────────────────────────────────────────────────────────
+  durationInterval = setInterval(() => {
+    if (!callActive) return;
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    document.getElementById('meta-duration').textContent = `${elapsed}s`;
+  }, 1000);
+
+  // ── Keyword sidebar ───────────────────────────────────────────────────────
+  function renderKeywords() {
+    const list = document.getElementById('keyword-list');
+    list.innerHTML = '';
+    KEYWORDS.forEach(kw => {
+      const tag = document.createElement('div');
+      tag.className = 'keyword-tag';
+      tag.innerHTML = `<span>${kw}</span><span class="keyword-count" id="kw-${kw.replace(/\s/g,'_')}">${keywordCounts[kw]}</span>`;
+      list.appendChild(tag);
+    });
+  }
+  renderKeywords();
+
+  function bumpKeyword(kw) {
+    keywordCounts[kw]++;
+    const el = document.getElementById('kw-' + kw.replace(/\s/g,'_'));
+    if (el) el.textContent = keywordCounts[kw];
+  }
+
+  // ── Keyword highlighting ──────────────────────────────────────────────────
+  function highlightText(text) {
+    let result = escapeHtml(text);
+    let matched = false;
+    KEYWORDS.forEach(kw => {
+      const regex = new RegExp(`(${escapeRegex(kw)})`, 'gi');
+      if (regex.test(result)) {
+        matched = true;
+        bumpKeyword(kw.toLowerCase());
+        result = result.replace(regex, `<span class="keyword-match">$1</span>`);
+      }
+    });
+    return { html: result, matched };
+  }
+
+  function escapeHtml(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  // ── Add a line to the transcript ──────────────────────────────────────────
+  function addLine(text, timestamp) {
+    if (emptyState) emptyState.remove();
+
+    const time = timestamp
+      ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    const { html, matched } = highlightText(text);
+
+    const line = document.createElement('div');
+    line.className = 'transcript-line';
+    line.innerHTML = `
+      <span class="ts-time">${time}</span>
+      <span class="ts-text${matched ? ' highlighted' : ''}">${html}</span>
+    `;
+    transcriptScroll.appendChild(line);
+    transcriptScroll.scrollTop = transcriptScroll.scrollHeight;
+  }
+
+  // ── Update status pill ────────────────────────────────────────────────────
+  function setStatus(status) {
+    const normalized = status.toLowerCase().replace('-', '_');
+    statusPill.className = '';
+    statusPill.classList.add(normalized.replace('_', '-'));
+
+    const labels = {
+      initiated: 'Initiating',
+      ringing: 'Ringing',
+      'in-progress': 'Live',
+      answered: 'Live',
+      completed: 'Completed',
+      failed: 'Failed',
+      busy: 'Busy',
+      'no-answer': 'No Answer',
+    };
+    statusText.textContent = labels[normalized] || status;
+
+    const isActive = ['initiated', 'ringing', 'in-progress', 'answered'].includes(normalized);
+    const dot = statusPill.querySelector('.dot');
+    dot.classList.toggle('pulse', isActive);
+    hangupBtn.disabled = !isActive;
+
+    if (!isActive) {
+      callActive = false;
+      clearInterval(durationInterval);
+    }
+  }
+
+  // ── Hang up ───────────────────────────────────────────────────────────────
+  async function hangUp() {
+    hangupBtn.disabled = true;
+    try {
+      await fetch('/twilio/hangup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callSid }),
+      });
+    } catch (err) {
+      console.error('Hangup error:', err);
+    }
+  }
+
+  // ── WebSocket ─────────────────────────────────────────────────────────────
+  function connectWS() {
+    if (!callSid) {
+      wsStatusEl.textContent = 'No callSid';
+      return;
+    }
+
+    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${protocol}://${location.host}/ws?callSid=${callSid}`);
+
+    ws.onopen = () => {
+      wsStatusEl.textContent = 'Connected';
+      wsStatusEl.className = 'connected';
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === 'init') {
+          // Replay existing transcript
+          const { transcript, status } = msg.data;
+          transcript.forEach(l => addLine(l.text, l.timestamp));
+          if (status) setStatus(status);
+
+        } else if (msg.type === 'transcript') {
+          addLine(msg.data.text, msg.data.timestamp);
+
+        } else if (msg.type === 'status') {
+          setStatus(msg.data.status);
+          if (msg.data.status === 'completed') {
+            noteStatusEl.textContent = '✅ Transcript logged to HubSpot';
+            noteStatusEl.className = 'done';
+          }
+        }
+      } catch (e) {
+        console.error('WS parse error:', e);
+      }
+    };
+
+    ws.onclose = () => {
+      wsStatusEl.textContent = 'Disconnected';
+      wsStatusEl.className = '';
+      // Reconnect if call is still active
+      if (callActive) setTimeout(connectWS, 2000);
+    };
+
+    ws.onerror = (e) => {
+      console.error('WS error:', e);
+    };
+  }
+
+  connectWS();
+</script>
+</body>
+</html>
