@@ -53,8 +53,17 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
  
 // ── Routes ────────────────────────────────────────────────────────────────────
-app.use('/twilio', twilioRoutes);
-app.use('/hubspot', hubspotRoutes);
+if (typeof twilioRoutes === 'function') {
+  app.use('/twilio', twilioRoutes);
+} else {
+  console.error('[Boot] WARNING: twilioRoutes is not a function, skipping');
+}
+
+if (typeof hubspotRoutes === 'function') {
+  app.use('/hubspot', hubspotRoutes);
+} else {
+  console.error('[Boot] WARNING: hubspotRoutes is not a function, skipping');
+}
  
 // Dashboard page (served for /dashboard?callSid=xxx)
 app.get('/dashboard', (req, res) => {
