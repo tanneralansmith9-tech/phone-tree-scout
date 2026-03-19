@@ -18,7 +18,6 @@ console.log('[twilio.js] ai loaded');
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 console.log('[twilio.js] client created');
 
-const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 // How many seconds of silence after content before we end the call
 const SILENCE_TIMEOUT_SECONDS = 8;
