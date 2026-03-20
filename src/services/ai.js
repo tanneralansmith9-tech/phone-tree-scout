@@ -6,7 +6,13 @@
 
 const OpenAI = require('openai');
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let openai;
+function getClient() {
+  if (!openai) {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openai;
+}
 
 /**
  * analyzeTranscript()
@@ -32,26 +38,25 @@ ${rawTranscript}
 
 Return your response in EXACTLY this format (fill in what you find, omit sections with no data):
 
-📞 PHONE TREE MAP — ${companyName.toUpperCase()}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PHONE TREE MAP — ${companyName.toUpperCase()}
 
-🎯 FASTEST PATH TO HUMAN
+ FASTEST PATH TO HUMAN
 [The quickest way to reach a live person — e.g. "Press 0 at any time for operator"]
 
-📋 MAIN MENU OPTIONS
+ MAIN MENU OPTIONS
 [List each option clearly — e.g.]
 • Press 1 — Administration
 • Press 2 — Facilities  
 • Press 3 — Procurement / Purchasing
 • Press 0 — Operator
 
-🔑 KEY SHORTCUTS
+KEY SHORTCUTS
 [Any shortcuts mentioned — e.g. "Press 0 at any menu level for operator"]
 
-🕐 OFFICE HOURS
+ OFFICE HOURS
 [Any hours mentioned — e.g. "Monday–Friday 8am–5pm"]
 
-📝 NOTES
+ NOTES
 [Anything else useful — hold times, callback options, direct extensions mentioned, departments, etc.]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -59,7 +64,7 @@ Mapped by Phone Tree Scout
 `.trim();
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getClient().chat.completions.create({
       model: 'gpt-4o-mini', // cheap and fast, perfect for this
       messages: [
         {
@@ -72,7 +77,7 @@ Mapped by Phone Tree Scout
         },
       ],
       max_tokens: 600,
-      temperature: 0.2, // low temperature = consistent structured output
+      temperature: 0.2, // low temperature = consistent structured outputnode --version
     });
 
     const result = completion.choices[0]?.message?.content?.trim();
