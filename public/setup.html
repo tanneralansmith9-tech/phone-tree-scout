@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phone Tree Scout — Setup</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; background: #f9fafb; color: #1a1a1a; }
+    .container { max-width: 640px; margin: 0 auto; padding: 40px 20px; }
+    .header { text-align: center; margin-bottom: 40px; }
+    .header h1 { font-size: 28px; margin-bottom: 8px; }
+    .header p { color: #666; font-size: 16px; }
+    .card { background: white; border-radius: 12px; padding: 28px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .card h2 { font-size: 18px; margin-bottom: 12px; }
+    .card p, .card li { font-size: 15px; line-height: 1.6; color: #444; }
+    .card ol { padding-left: 24px; }
+    .card li { margin-bottom: 8px; }
+    .bookmarklet-btn {
+      display: inline-block;
+      background: #7c3aed;
+      color: white;
+      padding: 16px 36px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: grab;
+    }
+    .drag-zone {
+      text-align: center;
+      padding: 30px;
+      border: 2px dashed #d1d5db;
+      border-radius: 12px;
+      margin: 16px 0;
+      background: #faf5ff;
+    }
+    .drag-zone p { color: #7c3aed; font-weight: 500; margin-top: 12px; font-size: 14px; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
+    .footer { text-align: center; margin-top: 40px; color: #999; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📞 Phone Tree Scout</h1>
+      <p>Automatically map any company's phone tree from HubSpot</p>
+    </div>
+    <div class="card">
+      <h2>Step 1 — Install the Bookmarklet</h2>
+      <p>Make sure your bookmark bar is visible (<code>Ctrl+Shift+B</code> in Chrome), then drag this button up to it:</p>
+      <div class="drag-zone">
+        <a class="bookmarklet-btn"
+           href="javascript:void((function(){var s=document.createElement('script');s.src='https://phone-tree-scout.onrender.com/scout-bookmarklet.js?t='+Date.now();document.body.appendChild(s);})())">
+          📞 Scout Phone Tree
+        </a>
+        <p>↑ Drag this to your bookmark bar ↑</p>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Step 2 — Use It</h2>
+      <ol>
+        <li>Open any <strong>Company record</strong> in HubSpot</li>
+        <li>Click <strong>"Scout Phone Tree"</strong> in your bookmark bar</li>
+        <li>Confirm the company name and phone number</li>
+        <li>Click <strong>"Map Phone Tree"</strong></li>
+        <li>Wait ~2 minutes, then refresh the HubSpot page</li>
+        <li>The phone tree map appears as a note on the company record</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h2>What You'll Get</h2>
+      <p>Scout calls the company, listens to the full phone tree, and uses AI to create a structured map showing:</p>
+      <ol>
+        <li><strong>Fastest path to a human</strong> — shortcuts to skip the IVR</li>
+        <li><strong>All menu options</strong> — every "press X for..." option</li>
+        <li><strong>Key shortcuts</strong> — direct extensions, operator codes</li>
+        <li><strong>Office hours</strong> — if mentioned in the recording</li>
+      </ol>
+    </div>
+    <div class="footer">
+      <p>Phone Tree Scout — Built for sales teams that hate phone trees.</p>
+    </div>
+  </div>
+</body>
+</html>
