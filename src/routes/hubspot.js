@@ -19,5 +19,8 @@ router.get('/crm-card', async (req, res) => {
     ]
   });
 });
-
+// OAuth callback — just shows success message
+router.get('/oauth-callback', (req, res) => {
+    res.send('<h1>Phone Tree Scout installed successfully!</h1><p>You can close this tab and return to HubSpot.</p>');
+  });
 module.exports = router;
