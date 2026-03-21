@@ -69,7 +69,6 @@ Return ONLY valid JSON. No markdown, no backticks, no explanation.`;
       return buildFallbackNote(companyName, 'AI analysis returned empty response.');
     }
 
-    // Parse JSON from GPT
     let data;
     try {
       const cleaned = raw.replace(/```json|```/g, '').trim();
@@ -79,7 +78,6 @@ Return ONLY valid JSON. No markdown, no backticks, no explanation.`;
       return buildFallbackNote(companyName, 'AI returned unstructured response.\n\n' + raw);
     }
 
-    // Format into clean readable note
     const note = formatNote(companyName, data);
     console.log(`[AI] Transcript analyzed for ${companyName} — ${note.length} chars`);
     return note;
@@ -97,73 +95,59 @@ Return ONLY valid JSON. No markdown, no backticks, no explanation.`;
 function formatNote(companyName, data) {
   const lines = [];
 
-  lines.push(`PHONE TREE MAP: ${companyName.toUpperCase()}`);
-  lines.push('');
+  // Header
+  lines.push('PHONE TREE MAP\u{1F5FA}\uFE0F:');
 
-  // Call type
-  if (data.call_type) {
-    const typeLabels = {
-      ivr: 'Automated Phone Tree (IVR)',
-      human: 'Live Person Answered',
-      voicemail: 'Voicemail / After Hours',
-      closed: 'Office Closed',
-      unknown: 'Unknown',
-    };
-    lines.push(`Type: ${typeLabels[data.call_type] || data.call_type}`);
-    lines.push('');
+  // Menu options as bullet list
+  if (data.menu_options && data.menu_options.length > 0) {
+    for (const opt of data.menu_options) {
+      lines.push(`x${opt.key}- ${opt.description}`);
+    }
   }
 
   // Fastest path to human
   if (data.fastest_path_to_human) {
-    lines.push('FASTEST PATH TO HUMAN');
-    lines.push(data.fastest_path_to_human);
-    lines.push('');
-  }
-
-  // Menu options
-  if (data.menu_options && data.menu_options.length > 0) {
-    lines.push('MENU OPTIONS');
-    for (const opt of data.menu_options) {
-      lines.push(`  Press ${opt.key} - ${opt.description}`);
-    }
-    lines.push('');
+    lines.push(`Fastest path to human: ${data.fastest_path_to_human}`);
   }
 
   // Shortcuts
   if (data.shortcuts && data.shortcuts.length > 0) {
-    lines.push('SHORTCUTS');
     for (const shortcut of data.shortcuts) {
-      lines.push(`  ${shortcut}`);
+      lines.push(`Shortcut: ${shortcut}`);
     }
-    lines.push('');
   }
 
   // Office hours
   if (data.office_hours) {
-    lines.push('OFFICE HOURS');
-    lines.push(data.office_hours);
-    lines.push('');
+    lines.push(`Hours: ${data.office_hours}`);
   }
 
   // Notes
   if (data.notes) {
-    lines.push('NOTES');
-    lines.push(data.notes);
-    lines.push('');
+    lines.push(`Notes: ${data.notes}`);
   }
 
-  lines.push('---');
-  lines.push('Mapped by Phone Tree Scout');
+  // Call type labels
+  const typeLabels = {
+    ivr: 'Automated Phone Tree (IVR)',
+    human: 'Live Person Answered',
+    voicemail: 'Voicemail / After Hours',
+    closed: 'Office Closed',
+    unknown: 'Unknown',
+  };
+  const callType = typeLabels[data.call_type] || data.call_type || 'Unknown';
+
+  // Footer line with agency and type
+  lines.push(`Agency: ${companyName.toUpperCase()} | Type: ${callType}`);
 
   return lines.join('\n');
 }
 
 /**
  * buildFallbackNote()
- * Returns a clean fallback note when AI fails or transcript is empty.
  */
 function buildFallbackNote(companyName, message) {
-  return `PHONE TREE MAP: ${companyName.toUpperCase()}\n\nNOTE\n${message}\n\n---\nMapped by Phone Tree Scout`;
+  return `PHONE TREE MAP\u{1F5FA}\uFE0F:\n${message}\nAgency: ${companyName.toUpperCase()}`;
 }
 
 module.exports = { analyzeTranscript };
