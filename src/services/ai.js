@@ -140,14 +140,14 @@ function formatNote(companyName, data) {
   // Footer line with agency and type
   lines.push(`Agency: ${companyName.toUpperCase()} | Type: ${callType}`);
 
-  return lines.join('\n');
+  return lines.join('<br>');
 }
 
 /**
  * buildFallbackNote()
  */
 function buildFallbackNote(companyName, message) {
-  return `PHONE TREE MAP\u{1F5FA}\uFE0F:\n${message}\nAgency: ${companyName.toUpperCase()}`;
+  return `PHONE TREE MAP\u{1F5FA}\uFE0F:<br>${message}<br>Agency: ${companyName.toUpperCase()}`;
 }
 
 module.exports = { analyzeTranscript };
