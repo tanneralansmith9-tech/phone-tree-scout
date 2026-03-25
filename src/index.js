@@ -1,4 +1,5 @@
 require('dotenv').config();
+const freeRoutes = require('./routes/free');
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -64,6 +65,7 @@ if (typeof hubspotRoutes === 'function') {
 } else {
   console.error('[Boot] WARNING: hubspotRoutes is not a function, skipping');
 }
+app.use('/api', freeRoutes);
  
 // Dashboard page (served for /dashboard?callSid=xxx)
 app.get('/dashboard', (req, res) => {
