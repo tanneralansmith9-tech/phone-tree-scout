@@ -27,6 +27,10 @@ async function analyzeTranscript(rawTranscript, companyName = 'Unknown Company')
   const prompt = `You are analyzing a phone call transcript from a phone tree mapping tool.
 Company called: ${companyName}
 
+IMPORTANT: This transcript comes from speech recognition of an automated phone menu (IVR). The speech recognition often garbles the order of words and merges sentences incorrectly. For example it might capture "for utility services please press 1 for all other inquiries please press 2" as one run-on sentence. You need to carefully figure out which description goes with which key number.
+
+The pattern is almost always: "[description], press [number]" or "press [number] for [description]". Pay close attention to which number follows which description.
+
 TRANSCRIPT:
 ${rawTranscript}
 
@@ -36,12 +40,12 @@ Analyze this transcript and return ONLY a JSON object with these fields. Use nul
   "call_type": "ivr" or "human" or "voicemail" or "closed" or "unknown",
   "fastest_path_to_human": "e.g. Press 0 at any time",
   "menu_options": [
-    {"key": "1", "description": "Reservations"},
-    {"key": "2", "description": "Flight Status"}
+    {"key": "1", "description": "Utility Services"},
+    {"key": "2", "description": "All Other Inquiries"}
   ],
   "shortcuts": ["e.g. Press 0 for operator", "Say representative"],
   "office_hours": "e.g. Monday-Friday 8am-5pm",
-  "notes": "any other useful info — hold times, departments, languages, etc."
+  "notes": "any other useful info"
 }
 
 Return ONLY valid JSON. No markdown, no backticks, no explanation.`;
