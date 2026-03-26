@@ -5,18 +5,12 @@
 
 const express = require('express');
 const router = express.Router();
-console.log('[twilio.js] router created');
 const twilio = require('twilio');
-console.log('[twilio.js] twilio loaded');
 const callStore = require('../callStore');
-console.log('[twilio.js] callStore loaded');
 const hubspotService = require('../services/hubspot');
-console.log('[twilio.js] hubspotService loaded');
 const { analyzeTranscript } = require('../services/ai');
-console.log('[twilio.js] ai loaded');
 
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-console.log('[twilio.js] client created');
 
 // How many seconds of silence after content before we end the call
 const SILENCE_TIMEOUT_SECONDS = 8;
@@ -330,6 +324,30 @@ router.post('/status', async (req, res) => {
       console.log(`[Status] Running AI analysis for ${call.meta.companyName}...`);
 
       const structuredNote = await analyzeTranscript(rawTranscript, call.meta.companyName);
+      // Simple retry detection from raw transcript
+      const lowerTranscript = rawTranscript.toLowerCase();
+      const retrySignals = [
+        'office is closed',
+        'office is currently closed',
+        'our hours are',
+        'call back during',
+        'call us back',
+        'business hours',
+        'currently unavailable',
+        'leave a message',
+        'no one is available',
+      ];
+      const needsRetry = retrySignals.some(signal => lowerTranscript.includes(signal));
+
+      if (needsRetry) {
+        console.log(`[Status] Retry signal detected for ${call.meta.companyName}`);
+        addToRetryQueue(
+          call.meta.companyId,
+          call.meta.companyName,
+          call.meta.toNumber,
+          'closed_or_unavailable'
+        );
+      }
 
       // Broadcast the AI result to the dashboard
       callStore.broadcast(CallSid, {
