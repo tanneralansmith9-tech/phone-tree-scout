@@ -1,0 +1,97 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phone Tree Scout — Get Started</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: #f9fafb;
+      color: #1a1a1a;
+    }
+    .container { max-width: 640px; margin: 0 auto; padding: 40px 20px; }
+    .header { text-align: center; margin-bottom: 40px; }
+    .header h1 { font-size: 32px; margin-bottom: 8px; }
+    .header p { color: #666; font-size: 18px; }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .card h2 { font-size: 20px; margin-bottom: 12px; }
+    .card p, .card li { font-size: 15px; line-height: 1.7; color: #444; }
+    .card ol { padding-left: 24px; }
+    .card li { margin-bottom: 8px; }
+    .install-btn {
+      display: inline-block;
+      background: #7c3aed;
+      color: white;
+      padding: 16px 36px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-size: 18px;
+      font-weight: 700;
+      margin: 20px 0;
+    }
+    .install-btn:hover { background: #6d28d9; }
+    .center { text-align: center; }
+    .footer { text-align: center; margin-top: 40px; color: #999; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📞 Phone Tree Scout</h1>
+      <p>Automatically map every phone tree in your HubSpot pipeline.</p>
+    </div>
+
+    <div class="card">
+      <h2>What it does</h2>
+      <p>Scout calls your target companies, listens to their phone trees, and
+         uses AI to create a structured map showing every menu option, the
+         fastest path to a human, shortcuts, and office hours. The map saves
+         directly to the company record in HubSpot.</p>
+    </div>
+
+    <div class="card">
+      <h2>How to set up</h2>
+      <ol>
+        <li>Click the Install button below to connect Scout to your HubSpot</li>
+        <li>Scout adds a "Scout IVR" tab to your company records</li>
+        <li>Click "Map Phone Tree" on any company to start mapping</li>
+        <li>Set up auto-mapping in your workflows for hands-free operation</li>
+      </ol>
+    </div>
+
+    <div class="card center">
+      <a class="install-btn"
+         href="https://app.hubspot.com/oauth/authorize?client_id=3ba0823a-ec32-4d38-80fb-c1f803d78b02&redirect_uri=https://phone-tree-scout.onrender.com/hubspot/oauth-callback&scope=oauth%20crm.objects.companies.read">
+        Install Phone Tree Scout
+      </a>
+      <p style="color: #999; font-size: 13px; margin-top: 8px;">
+        Requires a HubSpot account. Free to install.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>After installing</h2>
+      <ol>
+        <li>Go to any company record in HubSpot</li>
+        <li>Click the "Scout IVR" tab</li>
+        <li>Click "Map Phone Tree"</li>
+        <li>Wait ~2 minutes, refresh, and see the structured note on the record</li>
+      </ol>
+    </div>
+
+    <div class="footer">
+      <p>Phone Tree Scout — Built for sales teams that hate phone trees.</p>
+    </div>
+  </div>
+</body>
+</html>
+```
