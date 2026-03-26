@@ -23,7 +23,107 @@ const SILENCE_TIMEOUT_SECONDS = 8;
 
 // Maximum call duration in seconds — safety net (3 minutes)
 const MAX_CALL_DURATION = 180;
+/**
+ * isBusinessHours()
+ * Checks if the current time is within calling hours (9am-2pm) for a timezone.
+ * Returns true if it's safe to call.
+ */
+function isBusinessHours(timezone = 'America/New_York') {
+  try {
+    const now = new Date();
+    const options = { timeZone: timezone, hour: 'numeric', hour12: false };
+    const hourStr = new Intl.DateTimeFormat('en-US', options).format(now);
+    const hour = parseInt(hourStr, 10);
 
+    const dayOptions = { timeZone: timezone, weekday: 'short' };
+    const day = new Intl.DateTimeFormat('en-US', dayOptions).format(now);
+
+    if (day === 'Sat' || day === 'Sun') return false;
+
+    return hour >= 9 && hour < 14;
+  } catch (err) {
+    console.error('[BusinessHours] Invalid timezone:', timezone, err.message);
+    return true;
+  }
+}
+ /**
+ * Retry Queue — in-memory queue for calls that need retrying.
+ */
+const retryQueue = [];
+const MAX_RETRIES = 3;
+
+function addToRetryQueue(companyId, companyName, phone, reason) {
+  const existing = retryQueue.find(item => item.companyId === companyId);
+  if (existing) {
+    existing.retryCount++;
+    existing.lastReason = reason;
+    return;
+  }
+  retryQueue.push({
+    companyId,
+    companyName,
+    phone,
+    reason,
+    retryCount: 0,
+    addedAt: new Date(),
+  });
+  console.log(`[Retry] Queued ${companyName} — reason: ${reason}`);
+}
+
+async function processRetryQueue() {
+  if (retryQueue.length === 0) return;
+  console.log(`[Retry] Processing queue — ${retryQueue.length} items`);
+
+  const toProcess = [...retryQueue];
+
+  for (const item of toProcess) {
+    if (item.retryCount >= MAX_RETRIES) {
+      const idx = retryQueue.indexOf(item);
+      if (idx > -1) retryQueue.splice(idx, 1);
+      console.log(`[Retry] Max retries reached for ${item.companyName} — removing`);
+      continue;
+    }
+
+    if (!isBusinessHours('America/New_York')) continue;
+
+    try {
+      let cleanPhone = item.phone.replace(/[^0-9+]/g, '');
+      if (!cleanPhone.startsWith('+')) cleanPhone = '+1' + cleanPhone;
+
+      const call = await client.calls.create({
+        to: cleanPhone,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        machineDetection: 'DetectMessageEnd',
+        machineDetectionTimeout: 30,
+        asyncAmd: 'true',
+        asyncAmdStatusCallback: `${process.env.BASE_URL}/twilio/amd-status`,
+        asyncAmdStatusCallbackMethod: 'POST',
+        url: `${process.env.BASE_URL}/twilio/twiml?companyId=${encodeURIComponent(item.companyId)}&companyName=${encodeURIComponent(item.companyName)}`,
+        statusCallback: `${process.env.BASE_URL}/twilio/status`,
+        statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+        statusCallbackMethod: 'POST',
+      });
+
+      callStore.initCall(call.sid, {
+        companyId: item.companyId,
+        companyName: item.companyName,
+        toNumber: cleanPhone,
+      });
+
+      const idx = retryQueue.indexOf(item);
+      if (idx > -1) retryQueue.splice(idx, 1);
+      console.log(`[Retry] Retried ${item.companyName} — SID: ${call.sid}`);
+
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    } catch (err) {
+      console.error(`[Retry] Failed for ${item.companyName}:`, err.message);
+      item.retryCount++;
+    }
+  }
+}
+
+// Check retry queue every 15 minutes
+setInterval(processRetryQueue, 15 * 60 * 1000);
 /**
  * POST /twilio/call
  * Initiates an outbound call with answering machine detection.
@@ -247,7 +347,19 @@ router.post('/status', async (req, res) => {
           duration: Duration,
           callSid: CallSid,
         });
-        console.log(`[HubSpot] Structured note logged for company ${call.meta.companyId}`);
+        console.log(`[HubSpot] Structured note logged for company ${call.meta.companyId}`);// Check if call needs retry (closed office, voicemail, etc.)
+        const lowerTranscript = rawTranscript.toLowerCase();
+        const retrySignals = [
+          'office is closed', 'office is currently closed',
+          'our hours are', 'call back during', 'call us back',
+          'business hours', 'currently unavailable',
+          'leave a message', 'no one is available',
+        ];
+        const needsRetry = retrySignals.some(signal => lowerTranscript.includes(signal));
+        if (needsRetry) {
+          console.log(`[Status] Retry signal detected for ${call.meta.companyName}`);
+          addToRetryQueue(call.meta.companyId, call.meta.companyName, call.meta.toNumber, 'closed_or_unavailable');
+        }
       } catch (err) {
         console.error('[HubSpot] Failed to log note:', err.message);
       }
@@ -274,5 +386,70 @@ router.post('/hangup', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+/**
+ * POST /twilio/auto-map
+ * Called by HubSpot workflow when a new company is added.
+ * Checks business hours, then fires a Scout call.
+ */
+router.post('/auto-map', async (req, res) => {
+  const { companyId } = req.body;
 
+  if (!companyId) {
+    return res.status(400).json({ error: 'companyId required' });
+  }
+
+  try {
+    const axios = require('axios');
+    const hsResponse = await axios.get(
+      `https://api.hubapi.com/crm/v3/objects/companies/${companyId}?properties=name,phone,timezone`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.HUBSPOT_ACCESS_TOKEN}`,
+        },
+      }
+    );
+
+    const company = hsResponse.data;
+    const companyName = company.properties.name || 'Unknown';
+    const phone = company.properties.phone;
+    const timezone = company.properties.timezone || 'America/New_York';
+
+    if (!phone) {
+      console.log(`[Auto-Map] No phone for company ${companyId} — skipping`);
+      return res.json({ status: 'skipped', reason: 'no_phone' });
+    }
+
+    if (!isBusinessHours(timezone)) {
+      addToRetryQueue(companyId, companyName, phone, 'outside_hours');
+      console.log(`[Auto-Map] Outside business hours for ${companyName} — queued`);
+      return res.json({ status: 'queued', reason: 'outside_hours' });
+    }
+
+    let cleanPhone = phone.replace(/[^0-9+]/g, '');
+    if (!cleanPhone.startsWith('+')) cleanPhone = '+1' + cleanPhone;
+
+    const call = await client.calls.create({
+      to: cleanPhone,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      machineDetection: 'DetectMessageEnd',
+      machineDetectionTimeout: 30,
+      asyncAmd: 'true',
+      asyncAmdStatusCallback: `${process.env.BASE_URL}/twilio/amd-status`,
+      asyncAmdStatusCallbackMethod: 'POST',
+      url: `${process.env.BASE_URL}/twilio/twiml?companyId=${encodeURIComponent(companyId)}&companyName=${encodeURIComponent(companyName)}`,
+      statusCallback: `${process.env.BASE_URL}/twilio/status`,
+      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+      statusCallbackMethod: 'POST',
+    });
+
+    callStore.initCall(call.sid, { companyId, companyName, toNumber: cleanPhone });
+    console.log(`[Auto-Map] Call initiated for ${companyName} (${cleanPhone}) — SID: ${call.sid}`);
+
+    res.json({ status: 'calling', callSid: call.sid });
+
+  } catch (err) {
+    console.error('[Auto-Map] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 module.exports = router;
