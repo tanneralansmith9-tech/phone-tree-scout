@@ -6,26 +6,12 @@ const WebSocket = require('ws');
 const cors = require('cors');
 const path = require('path');
  
-let twilioRoutes, hubspotRoutes, callStore;
- 
-try {
-  callStore = require('./callStore');
-  console.log('[Boot] callStore loaded:', typeof callStore);
-} catch (e) { console.error('[Boot] callStore FAILED:', e.message); }
- 
-try {
-  hubspotRoutes = require('./routes/hubspot');
-  console.log('[Boot] hubspotRoutes loaded:', typeof hubspotRoutes);
-} catch (e) { console.error('[Boot] hubspotRoutes FAILED:', e.message); }
- 
-try {
-  twilioRoutes = require('./routes/twilio');
-  console.log('[Boot] twilioRoutes loaded:', typeof twilioRoutes);
-} catch (e) { console.error('[Boot] twilioRoutes FAILED:', e.message); }
- 
+const callStore = require('./callStore');
+const hubspotRoutes = require('./routes/hubspot');
+const twilioRoutes = require('./routes/twilio');
+
 const app = express();
 const server = http.createServer(app);
- 
 // ── WebSocket server ──────────────────────────────────────────────────────────
 const wss = new WebSocket.Server({ server, path: '/ws' });
  
@@ -54,18 +40,8 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
  
 // ── Routes ────────────────────────────────────────────────────────────────────
-if (typeof twilioRoutes === 'function') {
-  app.use('/twilio', twilioRoutes);
-} else {
-  console.error('[Boot] WARNING: twilioRoutes is not a function, skipping');
-}
-
-if (typeof hubspotRoutes === 'function') {
-  app.use('/hubspot', hubspotRoutes);
-} else {
-  console.error('[Boot] WARNING: hubspotRoutes is not a function, skipping');
-}
-app.use('/api', freeRoutes);
+app.use('/twilio', twilioRoutes);
+app.use('/hubspot', hubspotRoutes);
  
 // Dashboard page (served for /dashboard?callSid=xxx)
 app.get('/dashboard', (req, res) => {
