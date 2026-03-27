@@ -134,6 +134,80 @@ async function checkNewCompanies() {
 
 // Run every hour
 setInterval(checkNewCompanies, 60 * 60 * 1000);
+// ── 90-Day Re-Map Cron Job ────────────────────────────────────────────────────
+async function checkStaleCompanies() {
+  console.log('[Cron] Checking for companies needing re-map...');
+
+  try {
+    const axios = require('axios');
+
+    // 90 days ago in milliseconds
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+
+    const searchRes = await axios.post(
+      'https://api.hubapi.com/crm/v3/objects/companies/search',
+      {
+        filterGroups: [
+          {
+            filters: [
+              {
+                propertyName: 'phone',
+                operator: 'HAS_PROPERTY',
+              },
+              {
+                propertyName: 'last_phone_tree_mapping',
+                operator: 'LT',
+                value: ninetyDaysAgo,
+              },
+            ],
+          },
+        ],
+        properties: ['name', 'phone', 'timezone'],
+        limit: 50,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.HUBSPOT_ACCESS_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const companies = searchRes.data.results;
+    console.log(`[Cron] Found ${companies.length} stale companies to re-map`);
+
+    for (const company of companies) {
+      const companyId = company.id;
+      const companyName = company.properties.name || 'Unknown';
+      const phone = company.properties.phone;
+      const timezone = company.properties.timezone || 'America/New_York';
+
+      const { isBusinessHours, addToRetryQueue } = require('./routes/twilio');
+
+      if (!isBusinessHours(timezone)) {
+        addToRetryQueue(companyId, companyName, phone, 'outside_hours');
+        console.log(`[Cron] Outside hours for ${companyName} — queued`);
+        continue;
+      }
+
+      await axios.post(
+        `${process.env.BASE_URL}/twilio/auto-map`,
+        { companyId },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+
+      console.log(`[Cron] Triggered re-map for ${companyName}`);
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+
+  } catch (err) {
+    console.error('[Cron] Error checking stale companies:', err.message);
+  }
+}
+
+// Run once a day
+setInterval(checkStaleCompanies, 24 * 60 * 60 * 1000);
 server.listen(PORT, () => {
   console.log(`\n🚀 Phone Tree Scout running on port ${PORT}`);
   console.log(`   Dashboard: ${process.env.BASE_URL}/dashboard`);
