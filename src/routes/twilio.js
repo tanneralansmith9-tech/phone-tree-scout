@@ -471,3 +471,5 @@ router.post('/auto-map', async (req, res) => {
   }
 });
 module.exports = router;
+module.exports.isBusinessHours = isBusinessHours;
+module.exports.addToRetryQueue = addToRetryQueue;

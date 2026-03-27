@@ -53,6 +53,87 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
  
 // ── Start ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
+// ── Auto-Map Cron Job ─────────────────────────────────────────────────────────
+async function checkNewCompanies() {
+  console.log('[Cron] Checking for new companies to map...');
+
+  try {
+    const axios = require('axios');
+
+    // Get companies created in the last hour that have a phone number
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+    const searchRes = await axios.post(
+      'https://api.hubapi.com/crm/v3/objects/companies/search',
+      {
+        filterGroups: [
+          {
+            filters: [
+              {
+                propertyName: 'createdate',
+                operator: 'GTE',
+                value: oneHourAgo,
+              },
+              {
+                propertyName: 'phone',
+                operator: 'HAS_PROPERTY',
+              },
+              {
+                propertyName: 'last_phone_tree_mapping',
+                operator: 'NOT_HAS_PROPERTY',
+              },
+            ],
+          },
+        ],
+        properties: ['name', 'phone', 'timezone'],
+        limit: 50,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.HUBSPOT_ACCESS_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const companies = searchRes.data.results;
+    console.log(`[Cron] Found ${companies.length} new companies to map`);
+
+    for (const company of companies) {
+      const companyId = company.id;
+      const companyName = company.properties.name || 'Unknown';
+      const phone = company.properties.phone;
+      const timezone = company.properties.timezone || 'America/New_York';
+
+      // Dynamically require to avoid circular deps
+      const { isBusinessHours, addToRetryQueue } = require('./routes/twilio');
+
+      if (!isBusinessHours(timezone)) {
+        addToRetryQueue(companyId, companyName, phone, 'outside_hours');
+        console.log(`[Cron] Outside hours for ${companyName} — queued`);
+        continue;
+      }
+
+      // Fire the call via the auto-map endpoint internally
+      await axios.post(
+        `${process.env.BASE_URL}/twilio/auto-map`,
+        { companyId },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+
+      console.log(`[Cron] Triggered auto-map for ${companyName}`);
+
+      // Small delay between companies to not hammer Twilio
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+
+  } catch (err) {
+    console.error('[Cron] Error checking new companies:', err.message);
+  }
+}
+
+// Run every hour
+setInterval(checkNewCompanies, 60 * 60 * 1000);
 server.listen(PORT, () => {
   console.log(`\n🚀 Phone Tree Scout running on port ${PORT}`);
   console.log(`   Dashboard: ${process.env.BASE_URL}/dashboard`);
